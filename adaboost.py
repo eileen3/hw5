@@ -13,3 +13,7 @@ def adaboost(X, Y, iterations=10):
 
 def calc_error(tree):
 	
+
+def update(d, t, error):
+	pass
+

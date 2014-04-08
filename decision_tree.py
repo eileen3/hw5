@@ -37,46 +37,47 @@ def build_decision_tree(training_set, labels):
 
 
 def propogate_tree(curr_node, training_set, labels):
-	value_index = 0
 	highest_entropy = -float('inf')
 	best_left = None
 	best_right = None
-	value_set = {}
 	for feature in curr_node.features_left:
-		value = training_set[value_index][feature]
-		if value_set.get(value) is not None:
-			value_index += 1
-			continue
-		else:
-			value_set[value] = 1
+		value_index = 0
+		value_set = {}
 		f = list(curr_node.features_left)
 		f.remove(feature)
-		node_left = Node(f)
-		node_right = Node(f)
-		for num_sample in range(len(training_set)):
-			if training_set[num_sample][feature] < value:
-				node_left.add_pattern(labels[num_sample])
+		while value_index < len(training_set):
+			value = training_set[value_index][feature]
+			if value_set.get(value) is not None:
+				value_index += 1
+				continue
 			else:
-				node_right.add_pattern(labels[num_sample])
-		if node_left.is_empty() or node_right.is_empty():
+				value_set[value] = 1
+			node_left = Node(f)
+			node_right = Node(f)
+			for num_sample in range(len(training_set)):
+				if training_set[num_sample][feature] < value:
+					node_left.add_pattern(labels[num_sample])
+				else:
+					node_right.add_pattern(labels[num_sample])
+			if node_left.is_empty() or node_right.is_empty():
+				value_index += 1
+				continue
+			if node_left.is_spam():
+				node_left.set_classification(1)
+			elif node_left.is_not_spam():
+				node_left.set_classification(0)
+			if node_right.is_spam():
+				node_right.set_classification(1)
+			elif node_right.is_not_spam():
+				node_right.set_classification(0)
+			curr_node.set_children(node_left, node_right)
+			curr_entropy = calc_entropy_change(curr_node)
+			if curr_entropy > highest_entropy:
+				curr_node.set_feature(feature)
+				curr_node.set_split_value(value)
+				best_left = node_left
+				best_right = node_right
 			value_index += 1
-			continue
-		if node_left.is_spam():
-			node_left.set_classification(1)
-		elif node_left.is_not_spam():
-			node_left.set_classification(0)
-		if node_right.is_spam():
-			node_right.set_classification(1)
-		elif node_right.is_not_spam():
-			node_right.set_classification(0)
-		curr_node.set_children(node_left, node_right)
-		curr_entropy = calc_entropy_change(curr_node)
-		if curr_entropy > highest_entropy:
-			curr_node.set_feature(feature)
-			curr_node.set_split_value(value)
-			best_left = node_left
-			best_right = node_right
-		value_index += 1
 	curr_node.set_children(best_left, best_right)
 	return (curr_node.left_child, curr_node.right_child)
 
@@ -122,9 +123,24 @@ class DecisionTree:
 				leaves += [n]
 		return leaves
 
-	def score(x_test, y_test):
+	def score(self, x_test, y_test):
+		i = 0
+		correct = 0
 		for x in x_test:
-			label = self.classify()
+			label = self.classify(self.root, x)
+			if label == y_test[i]:
+				correct += 1
+			i += 1
+		return float(correct) / len(y_test)
+
+
+	def classify(self, node, dat):
+		if node.classification is not None:
+			return node.classification
+		elif dat[node.feature] > node.split_value:
+			return self.classify(node.right_child, dat)
+		else:
+			return self.classify(node.left_child, dat)
 
 	def display(self):
 		print str(self.get_leaf_nodes()) + '\n\n'

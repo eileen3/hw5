@@ -13,5 +13,5 @@ def cross_validate(X, Y):
 if __name__ == '__main__':
 	mat = scipy.io.loadmat('spam.mat')
 	#print cross_validate(mat['Xtrain'], mat['ytrain'])
-	#t = build_decision_tree(mat['Xtrain'], mat['ytrain'])
-	#t.display()
+	t = build_decision_tree(mat['Xtrain'], mat['ytrain'])
+	t.display()
