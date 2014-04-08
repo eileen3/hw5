@@ -1,3 +1,5 @@
+import math
+
 def build_decision_tree(training_set, labels):
 	features = range(len(training_set[0]))
 	root = Node(features)
@@ -8,7 +10,6 @@ def build_decision_tree(training_set, labels):
 	while len(node_queue) > 0:
 		curr_node = node_queue.pop(0)
 		if len(curr_node.features_left) == 0:
-			print 'no features left'
 			if curr_node.spam > curr_node.not_spam:
 				curr_node.set_classification(1)
 			else:
@@ -40,8 +41,14 @@ def propogate_tree(curr_node, training_set, labels):
 	highest_entropy = -float('inf')
 	best_left = None
 	best_right = None
+	value_set = {}
 	for feature in curr_node.features_left:
 		value = training_set[value_index][feature]
+		if value_set.get(value) is not None:
+			value_index += 1
+			continue
+		else:
+			value_set[value] = 1
 		f = list(curr_node.features_left)
 		f.remove(feature)
 		node_left = Node(f)
@@ -52,6 +59,7 @@ def propogate_tree(curr_node, training_set, labels):
 			else:
 				node_right.add_pattern(labels[num_sample])
 		if node_left.is_empty() or node_right.is_empty():
+			value_index += 1
 			continue
 		if node_left.is_spam():
 			node_left.set_classification(1)
@@ -114,6 +122,10 @@ class DecisionTree:
 				leaves += [n]
 		return leaves
 
+	def score(x_test, y_test):
+		for x in x_test:
+			label = self.classify()
+
 	def display(self):
 		print str(self.get_leaf_nodes()) + '\n\n'
 
@@ -129,6 +141,7 @@ class Node:
 		self.left_child = None
 		self.right_child = None
 		self.features_left = features
+		self.weight = 1
 
 	def is_leaf(self):
 		return self.classification is not None
@@ -154,6 +167,9 @@ class Node:
 	def set_split_value(self, split_value):
 		self.split_value = split_value
 
+	def set_weight(self, w):
+		self.weight = w
+
 	def is_empty(self):
 		return self.total == 0
 
@@ -176,4 +192,3 @@ class Node:
 		return ''.join(['feature=', str(self.feature), ';split_value=', str(self.split_value),
 			';classification=', str(self.classification),
 			';spam=', str(self.spam), ';not_spam=', str(self.not_spam)])
-		
