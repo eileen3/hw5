@@ -1,14 +1,17 @@
 import math
 import numpy as np
 
-def build_decision_tree(training_set, labels):
+def build_decision_tree(training_set, labels, max_depth=57):
 	features = range(len(training_set[0]))
-	root = Node(features, sum(labels), len(labels) - sum(labels))
+	root = Node(features, int(np.sum(labels)), int(len(labels) - np.sum(labels)))
 	tree = DecisionTree(root)
-	node_queue = [root]
-
+	combined_data = np.append(training_set, labels, axis=1)
+	node_queue = [(root, combined_data)]
+	depth = 0
+	pending_depth_incr = False
+	time_to_depth_incr = None
 	while len(node_queue) > 0:
-		curr_node = node_queue.pop(0)
+		curr_node, data = node_queue.pop(0)
 		if len(curr_node.features_left) == 0:
 			if curr_node.spam > curr_node.not_spam:
 				curr_node.set_classification(1)
@@ -22,8 +25,8 @@ def build_decision_tree(training_set, labels):
 			curr_node.set_classification(0)
 			continue
 
-		left_child, right_child = propogate_tree(
-			curr_node, training_set, labels)
+		left_child, right_child, left_data, right_data = \
+			propogate_tree(curr_node, data)
 
 		if right_child is None or left_child is None:
 			if curr_node.spam > curr_node.not_spam:
@@ -32,40 +35,48 @@ def build_decision_tree(training_set, labels):
 				curr_node.set_classification(0)
 			continue
 		else:
-			node_queue += [left_child, right_child]
+			node_queue += [(left_child, left_data), (right_child, right_data)]
 
 		tree.add_node(left_child)
 		tree.add_node(right_child)
 	return tree
 
 
-def propogate_tree(curr_node, training_set, labels):
+def propogate_tree(curr_node, training_set):
 	highest_entropy = -float('inf')
 	best_left = None
 	best_right = None
-	training_set
+	split_index = None
+	left_data = None
+	right_data = None
 	for feature in curr_node.features_left:
-		training_set.sort(key=lambda x: x[feature])
+		training_set = training_set[training_set[:,feature].argsort()]
+
+		start_spam = 0
+		start_not_spam = 0
 		num_spam = curr_node.spam
 		num_not_spam = curr_node.not_spam
-		value_set = {}
+		
 		f = list(curr_node.features_left)
 		f.remove(feature)
-		for i in range(1, len(training_set) - 1):
+		last_val = None
+
+		for i in range(len(training_set)):
+
 			value = training_set[i][feature]
-			if value_set.get(value) is not None:
-				continue
-			else:
-				value_set[value] = 1
-			node_left = Node(f, curr_node.spam, curr_node.not_spam)
-			node_right = Node(f, curr_node.spam, curr_node.not_spam)
-			for num_sample in range(len(training_set)):
-				if training_set[i][feature] < value:
-					node_left.add_pattern(labels[num_sample])
-				else:
-					node_right.add_pattern(labels[num_sample])
+
+			if training_set[i][-1] == 1:
+				start_spam += 1
+				num_spam -= 1
+				node_left = Node(f, start_spam, start_not_spam)
+				node_right = Node(f, num_spam, num_not_spam)
+			elif training_set[i][-1] == 0:
+				start_not_spam += 1
+				num_not_spam -= 1
+				node_left = Node(f, start_spam, start_not_spam)
+				node_right = Node(f, num_spam, num_not_spam)
+
 			if node_left.is_empty() or node_right.is_empty():
-				value_index += 1
 				continue
 			if node_left.is_spam():
 				node_left.set_classification(1)
@@ -75,44 +86,33 @@ def propogate_tree(curr_node, training_set, labels):
 				node_right.set_classification(1)
 			elif node_right.is_not_spam():
 				node_right.set_classification(0)
+
 			curr_node.set_children(node_left, node_right)
 			curr_entropy = calc_entropy_change(curr_node)
+
 			if curr_entropy > highest_entropy:
 				curr_node.set_feature(feature)
 				curr_node.set_split_value(value)
 				best_left = node_left
 				best_right = node_right
-			value_index += 1
+				split_index = i
+				highest_entropy = curr_entropy
+				left_data = training_set[:split_index + 1]
+				right_data = training_set[split_index + 1:]
 
-	curr_node.del_feature(curr_node.feature)
+	if curr_node.feature is not None:
+		curr_node.del_feature(curr_node.feature)
+	if split_index is None:
+		return (curr_node.left_child, curr_node.right_child, None, None)
 	curr_node.set_children(best_left, best_right)
-	return (curr_node.left_child, curr_node.right_child)
+	return (curr_node.left_child, curr_node.right_child, left_data, right_data)
 
 
 def calc_entropy_change(node):
-	p_l = node.left_child.get_total_patt() / node.get_total_patt()
-	entropy_node = None
-	left_entropy = None
-	right_entropy = None
-	if node.classification is not None:
-		entropy_node = 0
-	else:
-		entropy_node = calc_entropy(node)
-	if node.left_child.classification is not None:
-		left_entropy = 0
-	else:
-		left_entropy = calc_entropy(node.left_child)
-	if node.right_child.classification is not None:
-		right_entropy = 0
-	else:
-		right_entropy = calc_entropy(node.right_child)
-	return entropy_node - p_l * left_entropy - \
-		(1 - p_l) * right_entropy
-
-
-def calc_entropy(node):
-	return -(node.get_frac_spam() * math.log(node.get_frac_spam(), 2) + \
-		node.get_frac_not_spam() * math.log(node.get_frac_not_spam(), 2))
+	p_l = float(node.left_child.spam + node.left_child.not_spam) / \
+		(node.spam + node.not_spam)
+	return node.entropy - p_l * node.left_child.entropy - \
+		(1 - p_l) * node.right_child.entropy
 
 
 class DecisionTree:
@@ -154,27 +154,27 @@ class DecisionTree:
 
 
 class Node:
-	def __init__(self, features, spam=0, not_spam=0):
+	def __init__(self, features, spam, not_spam):
 		self.feature = None
 		self.split_value = None
 		self.classification = None
 		self.spam = spam
 		self.not_spam = not_spam
-		self.total = 0
 		self.left_child = None
 		self.right_child = None
 		self.features_left = features
-		self.weight = 1
+		self.entropy = self.calc_entropy()s
+
+	def calc_entropy(self):
+		if self.spam == 0 or self.not_spam == 0:
+			return 0.0
+		frac_spam = float(self.spam) / (self.spam + self.not_spam)
+		frac_not_spam = float(self.not_spam) / (self.spam + self.not_spam)
+		return -(frac_spam * math.log(frac_spam, 2) + \
+			frac_not_spam * math.log(frac_not_spam, 2))
 
 	def is_leaf(self):
 		return self.classification is not None
-
-	def add_pattern(self, label):
-		if label == 1:
-			self.spam += 1
-		else:
-			self.not_spam += 1
-		self.total += 1
 
 	def del_feature(self, feature):
 		self.features_left.remove(feature)
@@ -196,24 +196,13 @@ class Node:
 		self.weight = w
 
 	def is_empty(self):
-		return self.total == 0
+		return self.spam + self.not_spam == 0
 
 	def is_spam(self):
 		return self.spam != 0 and self.not_spam == 0
 
 	def is_not_spam(self):
 		return self.spam == 0 and self.not_spam != 0
-
-	def get_frac_spam(self):
-		if get_frac_spam == 0:
-			print self.spam
-		return float(self.spam) / (self.total)
-
-	def get_frac_not_spam(self):
-		return float(self.not_spam) / (self.total)
-
-	def get_total_patt(self):
-		return self.spam + self.not_spam
 
 	def __repr__(self):
 		return ''.join(['feature=', str(self.feature), ';split_value=', str(self.split_value),
