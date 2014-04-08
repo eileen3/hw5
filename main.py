@@ -1,7 +1,8 @@
 import scipy.io
 from decision_tree import build_decision_tree
 from sklearn import cross_validation
-
+from random_forest import build_forest
+import numpy as np
 
 def cross_validate(X, Y):
 	x_train, x_test, y_train, y_test = \
@@ -11,7 +12,15 @@ def cross_validate(X, Y):
 
 
 if __name__ == '__main__':
-	mat = scipy.io.loadmat('spam.mat')
-	#print cross_validate(mat['Xtrain'], mat['ytrain'])
-	#t = build_decision_tree(mat['Xtrain'], mat['ytrain'])
-	#t.display()
+    mat = scipy.io.loadmat('spam.mat')
+    #print cross_validate(mat['Xtrain'], mat['ytrain'])
+    #t = build_decision_tree(mat['Xtrain'], mat['ytrain'])
+    #t.display()
+    f = build_forest(mat['Xtrain'], mat['ytrain'],100) 
+    print mat['Xtrain']
+    #xt = np.array(mat['Xtrain'])
+    #yt = np.array(mat['Xtrain'])
+    #print xt
+    #print yt
+    #xt = xt[:
+    #print build_decision_tree(xt, yt)
