@@ -4,13 +4,14 @@ import numpy as np
 
 def build_decision_tree(training_set, labels, d=57):
 	features = range(len(training_set[0]))
-	root = Node(features, int(np.sum(labels)), int(len(labels) - np.sum(labels)))
+	s_label = 1
+	ns_label = 0 if 0 in labels else -1
+
+	root = Node(features, labels.reshape(-1).tolist().count(1),
+		len(labels) - labels.reshape(-1).tolist().count(1), ns_label)
 	tree = DecisionTree(root)
 	combined_data = np.append(training_set, labels, axis=1)
 	node_queue = [(root, combined_data)]
-
-	s_label = 1
-	ns_label = 0 if 0 in labels else -1
 	
 	max_depth = d
 	depth = 0
@@ -95,16 +96,16 @@ def propogate_tree(curr_node, training_set, s_label, ns_label):
 				else:
 					next_val = training_set[i + 1][feature]
 			for x in samples_to_add:
-				if training_set[x][-1] == 1:
+				if training_set[x][-1] == s_label:
 					start_spam += 1
 					num_spam -= 1
-					node_left = Node(f, start_spam, start_not_spam)
-					node_right = Node(f, num_spam, num_not_spam)
-				elif training_set[x][-1] == 0:
+					node_left = Node(f, start_spam, start_not_spam, ns_label)
+					node_right = Node(f, num_spam, num_not_spam, ns_label)
+				elif training_set[x][-1] == ns_label:
 					start_not_spam += 1
 					num_not_spam -= 1
-					node_left = Node(f, start_spam, start_not_spam)
-					node_right = Node(f, num_spam, num_not_spam)
+					node_left = Node(f, start_spam, start_not_spam, ns_label)
+					node_right = Node(f, num_spam, num_not_spam, ns_label)
 
 			if node_left.is_empty() or node_right.is_empty():
 				i += 1
@@ -183,7 +184,7 @@ class DecisionTree:
 
 
 class Node:
-	def __init__(self, features, spam, not_spam):
+	def __init__(self, features, spam, not_spam, ns):
 		self.feature = None
 		self.split_value = None
 		self.classification = None
@@ -193,6 +194,7 @@ class Node:
 		self.right_child = None
 		self.features_left = features
 		self.entropy = self.calc_entropy()
+		self.ns = ns
 
 	def calc_entropy(self):
 		if self.spam == 0 or self.not_spam == 0:
@@ -236,7 +238,7 @@ class Node:
 		elif self.spam > self.not_spam:
 			return 1
 		else:
-			return 0
+			return self.ns
 
 	def __repr__(self):
 		return ''.join(['feature=', str(self.feature), ';split_value=', str(self.split_value),

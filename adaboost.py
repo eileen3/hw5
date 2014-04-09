@@ -21,11 +21,18 @@ def adaboost(X, Y, iterations=10):
     d = [1.0 / len(Y)] * len(Y)
     trees = []
     Y = Y.astype(np.int16)
+    Y[Y==0] = -1
+    minimum_weight = float('inf')
     for i in range(iterations):
         x_sampled, y_sampled = sample_distr(d, X, Y)
-        t = build_decision_tree(x_sampled, y_sampled, d=1)
+        t = build_decision_tree(x_sampled, y_sampled, d=0)
         err = calc_error(t, d, x_sampled, y_sampled)
-        alpha = 0.5 * math.log((1.0 - err) / err)
+        if err == 0:
+            alpha = minimum_weight / 10
+        else:
+            alpha = 0.5 * math.log((1.0 - err) / err)
+            if alpha < minimum_weight:
+                minimum_weight = alpha
         t.set_alpha(alpha)
         trees += [t]
         for i in range(len(d)):
@@ -47,8 +54,9 @@ def sample_distr(distr, X, Y):
 def calc_error(tree, d, x, y):
     """Calculates the error of weak hypothesis."""
     error = 0
+    y = y.reshape(-1).tolist()
     for i in range(len(x)):
         pred = tree.classify(tree.root, x[i]) # classify the features
-        if pred != y[i]:
+        if int(pred) != int(y[i]):
             error += d[i]
     return error
