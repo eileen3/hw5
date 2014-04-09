@@ -28,7 +28,7 @@ def adaboost(X, Y, iterations=10):
         t = build_decision_tree(x_sampled, y_sampled, d=0)
         err = calc_error(t, d, x_sampled, y_sampled)
         if err == 0:
-            alpha = minimum_weight / 10
+            alpha = minimum_weight / 100
         else:
             alpha = 0.5 * math.log((1.0 - err) / err)
             if alpha < minimum_weight:
@@ -38,7 +38,8 @@ def adaboost(X, Y, iterations=10):
         for i in range(len(d)):
             d[i] = d[i] * math.exp(- alpha * y_sampled[i] * 
                 t.classify(t.root, x_sampled[i]))
-        d = [float(d[i]) / sum(d) for i in range(len(d))]
+        total = sum(d)
+        d = [float(d[i]) / total for i in range(len(d))]
     return trees
 
 
