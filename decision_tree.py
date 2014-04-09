@@ -1,6 +1,7 @@
 import math
 import numpy as np
 
+
 def build_decision_tree(training_set, labels, d=57):
 	features = range(len(training_set[0]))
 	root = Node(features, int(np.sum(labels)), int(len(labels) - np.sum(labels)))
