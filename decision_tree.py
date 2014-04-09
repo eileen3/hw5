@@ -2,6 +2,7 @@ import math
 import numpy as np
 
 def build_decision_tree(training_set, labels, max_depth=57):
+	print 'building a decision tree'
 	features = range(len(training_set[0]))
 	root = Node(features, int(np.sum(labels)), int(len(labels) - np.sum(labels)))
 	tree = DecisionTree(root)
@@ -163,7 +164,7 @@ class Node:
 		self.left_child = None
 		self.right_child = None
 		self.features_left = features
-		self.entropy = self.calc_entropy()s
+		self.entropy = self.calc_entropy()
 
 	def calc_entropy(self):
 		if self.spam == 0 or self.not_spam == 0:
